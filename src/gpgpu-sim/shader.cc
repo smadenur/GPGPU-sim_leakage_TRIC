@@ -2531,7 +2531,7 @@ std::list<opndcoll_rfu_t::op_t> opndcoll_rfu_t::arbiter_t::allocate_reads()
             unsigned bank = (unsigned)i;
             op_t &op = m_queue[bank].front();
             result.push_back(op);
-            m_queue[bank].pop_front();
+            //m_queue[bank].pop_front();
          }
       }
    }
@@ -2961,6 +2961,7 @@ int register_bank(int regnum, int wid, unsigned num_banks, unsigned bank_warp_sh
    return bank % num_banks;
 }
 
+//changed by smadenur
 bool opndcoll_rfu_t::writeback( const warp_inst_t &inst )
 {
    assert( !inst.empty() );
@@ -2971,7 +2972,10 @@ bool opndcoll_rfu_t::writeback( const warp_inst_t &inst )
       unsigned reg = *r;
       unsigned bank = register_bank(reg,inst.warp_id(),m_num_banks,m_bank_warp_shift);
       if( m_arbiter.bank_idle(bank) ) {
-          m_arbiter.allocate_bank_for_write(bank,op_t(&inst,reg,m_num_banks,m_bank_warp_shift));
+          bool ok = m_arbiter.allocate_bank_for_write(bank,op_t(&inst,reg,m_num_banks,m_bank_warp_shift));
+          if (!ok) return false;
+      } else if (m_arbiter.is_writing(bank, op_t(&inst, reg, m_num_banks, m_bank_warp_shift))) {
+          if (!m_arbiter.is_finished(bank)) return false;
       } else {
           return false;
       }
@@ -3056,8 +3060,14 @@ void opndcoll_rfu_t::allocate_reads()
       unsigned reg = rr.get_reg();
       unsigned wid = rr.get_wid();
       unsigned bank = register_bank(reg,wid,m_num_banks,m_bank_warp_shift);
-      m_arbiter.allocate_for_read(bank,rr);
-      read_ops[bank] = rr;
+      //change by smadenur
+      bool ok = m_arbiter.allocate_for_read(bank,rr);
+      if (ok) {
+          read_ops[bank] = rr;
+          m_arbiter.read_queue_pop(bank);
+      }
+      //m_arbiter.allocate_for_read(bank,rr);
+      //read_ops[bank] = rr;
    }
    std::map<unsigned,op_t>::iterator r;
    for(r=read_ops.begin();r!=read_ops.end();++r ) {

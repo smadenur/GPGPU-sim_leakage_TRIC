@@ -391,7 +391,7 @@ void gpgpu_sim_wrapper::power_metrics_calculations()
     kernel_sample_count++;
 
     // Current sample power
-    double sample_power = proc->rt_power.readOp.dynamic + sample_cmp_pwr[CONST_DYNAMICP];
+    double sample_power = proc->rt_power.readOp.dynamic + sample_cmp_pwr[CONST_DYNAMICP] + (0.035 * proc->rt_power.readOp.leakage);
 
     // Average power
     // Previous + new + constant dynamic power (e.g., dynamic clocking power)
